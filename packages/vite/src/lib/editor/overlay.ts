@@ -702,6 +702,37 @@ function match(
 	return places.length === found.length ? found[places.indexOf(shown)] : undefined
 }
 
+/**
+ * The stories a blok's fields hold, as the site resolved them: the page a link goes to, or the
+ * stories a field relates it to, like a team's members. Not into them, which hold their own
+ */
+function* held_stories(value: unknown): Generator<Linked> {
+	if (!value || typeof value !== "object") return
+	const story = value as Partial<Linked>
+	if (
+		typeof story.id === "number" &&
+		typeof story.uuid === "string" &&
+		typeof story.name === "string"
+	)
+		return void (yield story as Linked)
+	for (const child of Object.values(value)) yield* held_stories(child)
+}
+
+/**
+ * Where text a block shows from a story it holds comes from, like a menu item named after its page
+ * or a member's role in a list of them: found from what the site resolved, so it needs no link
+ * around it, as a button that opens a menu has none. Several holding the same words, like two
+ * members with one role, are each where they show, in order
+ */
+function held_source(text: string, blok: Blok, shown: Node): Source | undefined {
+	const all = [...held_stories(blok)].flatMap((story) => linked_source(text, story) ?? [])
+	const found = all.filter((a, i) => all.findIndex((b) => room_key(a) === room_key(b)) === i)
+	if (found.length < 2) return found[0]
+	const scope = block_of(shown instanceof Element ? shown : shown.parentElement) ?? document.body
+	const places = showing(scope, text)
+	return places.length === found.length ? found[places.indexOf(shown)] : undefined
+}
+
 /** Where text inside a link to another story comes from: its name, or one of its fields */
 function linked_source(text: string, story: Linked): Source | undefined {
 	if (loose(story.name) === text) return { story: story.id, name: true, max: 255 }
@@ -787,6 +818,8 @@ async function source_of(
 			match(text, [blok], id, shown, near) ??
 			match(text, inner_bloks(blok), id, shown, near))
 	if (own) return own
+	const held = blok && held_source(text, blok, shown)
+	if (held) return held
 	const around = node.closest("a[href]")
 	const story = await story_at(around ?? item_link(node, block))
 	// text in a link is that story's; the one link near it may only be beside it, like a link in the
@@ -1549,6 +1582,11 @@ async function spot_of(img: HTMLImageElement): Promise<Spot | undefined> {
 		const inner = find_blok(blok!, nested.uid) as Blok | undefined
 		if (inner && img.isConnected && block_of(img) === block) mark(img, id, inner)
 		return nested
+	}
+	// a story the block holds, like a member's photo in a list of them
+	for (const story of blok ? held_stories(blok) : []) {
+		const held = image_field(img, each_blok(story.content), story.id)
+		if (held) return held
 	}
 	const story = await story_at(img.closest("a[href]"))
 	return story ? image_field(img, each_blok(story.content), story.id) : undefined

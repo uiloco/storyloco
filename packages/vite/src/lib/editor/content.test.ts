@@ -647,6 +647,13 @@ describe("fields_at", () => {
 		expect(fields_at([["Bookyourfreedemotoday"]], [hero, cta], 1)).toEqual([0])
 	})
 
+	test("fields the same text is beside, like a title and its button, are all still candidates", () => {
+		const body = [["Fillinaconnectform"], ["Fillinaconnectform"]]
+		const sections = ["GetConnectedFillinaconnectform", "GetConnected"]
+		expect(fields_at(body, sections, 0)).toEqual([0, 1])
+		expect(fields_at(body, sections, 1)).toEqual([0, 1])
+	})
+
 	test("with nothing to go on, every field is still a candidate", () => {
 		expect(fields_at([[], []], [hero, cta], 0)).toEqual([0, 1])
 	})

@@ -474,3 +474,26 @@ describe("a plugin's moxy keys", () => {
 		expect(await moxy_setting(editor, field(""), "NOT_OURS")).toBeUndefined()
 	})
 })
+
+describe("the story a link goes to", () => {
+	test("a folder's start page is found at the folder's address", async () => {
+		const { operate } = await import("./ops.js")
+		const asked: Array<string> = []
+		const story = { id: 7, uuid: "u", name: "About", full_slug: "about/", content: {} }
+		const editor = {
+			mapi: async (path: string) => {
+				asked.push(decodeURIComponent(path))
+				if (path === "/stories/7") return { story }
+				return { stories: path.includes("about%2F") ? [story] : [] }
+			},
+		} as never
+		const site = { moxy: "", origin: "" }
+		expect(await operate(editor, { op: "linked", path: "/about/" }, site)).toMatchObject({
+			story: { id: 7, name: "About" },
+		})
+		expect(asked.slice(0, 2).map((path) => path.match(/with_slug=([^&]*)/)?.[1])).toEqual([
+			"about",
+			"about/",
+		])
+	})
+})

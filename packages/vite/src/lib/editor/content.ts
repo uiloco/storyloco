@@ -272,6 +272,10 @@ export function fields_at(neighbours: Array<Array<string>>, sections: Array<stri
 		const most = Math.max(...seen)
 		return most ? seen.flatMap((amount, i) => (amount === most ? [i] : [])) : []
 	})
+	// several fields with the same text beside them, like a title and the button under it saying the
+	// same: that text tells none of them apart, so each is still a candidate, for their order to settle
+	if (homes.length > 1 && homes[0].length && homes.every((seen) => seen.join() === homes[0].join()))
+		return homes.map((_, i) => i)
 	const here = homes.flatMap((seen, i) => (seen.includes(at) ? [i] : []))
 	return here.length ? here : homes.flatMap((seen, i) => (seen.length ? [] : [i]))
 }
