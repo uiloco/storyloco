@@ -1334,12 +1334,17 @@ export async function operate(
 		// a page links to other stories, like cards listing the latest articles; these are theirs
 		const path = typeof body.path === "string" ? body.path.replace(/^\/+|\/+$/g, "") : ""
 		if (!path || path.length > 500) throw new EditorError(400, "Unknown change")
-		const { stories } = await editor.mapi<{ stories: Array<Summary> }>(
-			`/stories/?${new URLSearchParams({ with_slug: path, story_only: "1" })}`
-		)
-		if (!stories[0]) return { story: null }
+		const at = async (slug: string) =>
+			(
+				await editor.mapi<{ stories: Array<Summary> }>(
+					`/stories/?${new URLSearchParams({ with_slug: slug, story_only: "1" })}`
+				)
+			).stories[0]
+		// a folder's start page is at the folder's own address, with a slash after it
+		const found = (await at(path)) ?? (await at(`${path}/`))
+		if (!found) return { story: null }
 		const { story } = await editor.mapi<{ story: Summary & { content: Node } }>(
-			`/stories/${stories[0].id}`
+			`/stories/${found.id}`
 		)
 		return { story: { ...summary(story), content: story.content } }
 	}
